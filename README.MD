@@ -6,7 +6,7 @@ mkdir ~/docker-rabbit
   
 Clone the repo  
 ```
-git clone https://git.mikerkelly.com/mikerkelly87/python-rabbit.git ~/docker-rabbit
+git clone https://github.com/mikerkelly87/docker-rabbit.git ~/docker-rabbit
 ```
   
 Go into the repo directory  

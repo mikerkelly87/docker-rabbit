@@ -1,3 +1,6 @@
+# Design  
+![Image description](figures/docker-rabbit.png)
+
 # Deployment  
 Create the Directory for the repo  
 ```

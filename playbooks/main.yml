@@ -1,0 +1,186 @@
+---
+- hosts: localhost
+  #become: yes
+  #become_user: root
+
+  tasks:
+  
+  - name: Make Sure Docker Python Module is Installed
+    pip:
+      name: '{{ item }}'
+    with_items:
+      - docker
+      - PyMySQL
+        #      - mysqlclient
+        #- MySQL-python
+ 
+  - name: See if rabbit-net Docker Network Exists
+    shell: docker network ls | grep rabbit-net
+    register: net_exists
+    ignore_errors: yes
+
+  - debug: msg="{{ net_exists.rc }}"
+ 
+  - name: Log out of DockerHub
+    docker_login:
+      state: absent
+
+  - name: Create rabbit Docker Network
+    shell: docker network create --subnet=172.25.0.0/16 rabbit-net
+    when: net_exists.rc !=0
+  
+  - name: Create RabbitMQ Container
+    docker_container:
+      name: rabbitmq
+      image: frodenas/rabbitmq
+      networks:
+        - name: rabbit-net
+          ipv4_address: "172.25.0.200"
+      exposed_ports:
+        - 5672
+        - 15672
+      published_ports:
+        - 5672:5672
+        - 15672:15672
+
+  - name: See if RabbitMQ User exists
+    shell: docker exec rabbitmq rabbitmqctl list_users | grep mkelly
+    register: user_exists
+    ignore_errors: yes
+
+  - debug: msg="{{ user_exists.rc }}"
+
+  - name: Create RabbitMQ User
+    shell: docker exec rabbitmq rabbitmqctl add_user mkelly mkelly
+    when: user_exists.rc !=0
+
+  - name: Make RabbitMQ User an Admin
+    shell: docker exec rabbitmq rabbitmqctl set_user_tags mkelly administrator
+    when: user_exists.rc !=0
+
+  - name: Set RabbitMQ User Permissions
+    shell: docker exec rabbitmq rabbitmqctl set_permissions -p / mkelly ".*" ".*" ".*"
+    when: user_exists.rc !=0
+
+  - name: See if Docker Client Image Exists
+    shell: docker images | grep client
+    register: client_exists
+    ignore_errors: yes
+
+  - debug: msg="{{ client_exists.rc }}"
+
+  - name: See if Docker Worker Image Exists
+    shell: docker images | grep worker
+    register: worker_exists
+    ignore_errors: yes
+
+  - debug: msg="{{ worker_exists.rc }}"
+
+  - name: See if Docker Mariadb Image Exists
+    shell: docker images | grep dbmaria
+    register: mariadb_exists
+    ignore_errors: yes
+
+  - debug: msg="{{ mariadb_exists.rc }}"
+  
+  - name: See if Docker Flask Image Exists
+    shell: docker images | grep flask
+    register: flask_exists
+    ignore_errors: yes
+
+  - debug: msg="{{ flask_exists.rc }}"
+  
+  
+  - name: Create Client Docker Image
+    shell: docker build -t client/v1 ~/docker-rabbit/Client/
+    when: client_exists.rc !=0
+
+  - name: Create Worker Docker Image
+    shell: docker build -t worker/v1 ~/docker-rabbit/Worker/
+    when: worker_exists.rc !=0
+
+  - name: Create Mariadb Docker Image
+    shell: docker build -t dbmaria/v1 ~/docker-rabbit/MariaDB/
+    when: mariadb_exists.rc !=0
+
+  - name: Create Flask Docker Image
+    shell: docker build -t flask/v1 ~/docker-rabbit/Flask/
+    when: flask_exists.rc !=0
+
+  - name: Create Client Container
+    docker_container:
+      name: client
+      image: client/v1
+      command: sleep infinity
+      networks:
+        - name: rabbit-net
+          ipv4_address: "172.25.0.202"
+  
+  - name: Create Worker Container
+    docker_container:
+      name: worker
+      image: worker/v1
+      command: /opt/worker/worker.py
+      networks:
+        - name: rabbit-net
+          ipv4_address: "172.25.0.203"
+  
+  - name: Create MariaDB Container
+    docker_container:
+      name: mariadb
+      image: dbmaria/v1
+      networks:
+        - name: rabbit-net
+          ipv4_address: "172.25.0.201"
+      published_ports:
+        - 3307:3306
+      env:
+          MYSQL_ROOT_PASSWORD: "S3cur3"
+
+  - name: Create MariaDB Container
+    docker_container:
+      name: flask
+      image: flask/v1
+      command: python3 /opt/flask/app.py
+      networks:
+        - name: rabbit-net
+          ipv4_address: "172.25.0.204"
+      published_ports:
+        - 5000:5000
+  
+  - name: Create MariaDB Database
+    mysql_db:
+      db: rabbitmq
+      state: present
+      login_user: root
+      login_password: S3cur3
+      login_host: 127.0.0.1
+      login_port: 3307
+    tags:
+    - db_create
+
+  - name: Create MariaDB Database User
+    mysql_user:
+      user: "rabbitmq"
+      password: "S3cur3"
+      host: "%"
+      priv: 'rabbitmq.*:ALL,GRANT'
+      state: present
+      login_user: root
+      login_password: S3cur3
+      login_host: 127.0.0.1
+      login_port: 3307
+    tags:
+    - db_create
+
+  - name: Create messages Table
+    shell: docker exec mariadb /bin/sh -c "mysql rabbitmq < /root/docker-rabbit/create_table.sql"
+    tags:
+    - db_create
+    
+  - name: Restart Worker Container
+    docker_container:
+      name: worker
+      state: started
+    tags:
+    - db_create

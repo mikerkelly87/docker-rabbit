@@ -51,7 +51,10 @@ docker exec -it worker /opt/worker/worker.py
 ```
   
 After you send the message you can verify it was inserted into the database  
-by connecting to `http://<DOCKER_HOST_IP>:5000`  
+by connecting to:  
+```
+http://<DOCKER_HOST_IP>:5000
+```
 Be sure that port 5000 is open on the Docker host before attempting this.  
   
 Alternatively you can verify it was inserted into the database  

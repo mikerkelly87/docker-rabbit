@@ -47,7 +47,7 @@ and insert it into the `rabbitmq` database on the mariadb container
   
 Send a message  
 ```
-docker exec -it worker /opt/worker/worker.py
+docker exec -it client /opt/client/client.py
 ```
   
 After you send the message you can verify it was inserted into the database  

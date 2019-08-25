@@ -21,8 +21,8 @@ Bootstrap Ansible
 `bash ./bootstrap.sh`  
   
 Run the Ansible playbooks  
-`ansible-playbook ~/docker-rabbit/playbooks/main.yml --skip-tags "db_create"`  
-`ansible-playbook ~/docker-rabbit/playbooks/main.yml --tags "db_create"`  
+```ansible-playbook ~/docker-rabbit/playbooks/main.yml --skip-tags "db_create"  
+ansible-playbook ~/docker-rabbit/playbooks/main.yml --tags "db_create"```  
   
 # Usage  
 This setup will send a message to a RabbitMQ message queue  

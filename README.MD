@@ -1,5 +1,9 @@
 # Design  
-![Image description](figures/docker-rabbit.png)
+![Image description](figures/docker-rabbit.png)  
+  
+# Notes  
+At this point in time this has only been tested on `CentOS 7`, `Ubuntu 16.04`, and `Ubuntu 18.04`.  
+It also requires you to run all of this as the `root` user.  
 
 # Deployment  
 Create the Directory for the repo  
